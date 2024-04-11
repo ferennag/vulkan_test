@@ -1,6 +1,5 @@
 #include "renderer/vulkan.h"
 #include <SDL_vulkan.h>
-#include "std/containers/darray.h"
 #include <vulkan/vk_enum_string_helper.h>
 
 static VulkanContext context = {0};
