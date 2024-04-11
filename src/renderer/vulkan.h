@@ -8,6 +8,7 @@
 #include "vulkan_types.h"
 #include "physical_device.h"
 #include "device.h"
+#include "instance.h"
 
 typedef struct SwapchainDetails {
     VkSwapchainKHR swapchain;
@@ -23,7 +24,7 @@ typedef struct SwapchainDetails {
 } SwapchainDetails;
 
 typedef struct VulkanContext {
-    VkInstance instance;
+    Instance instance;
     VkSurfaceKHR surface;
     PhysicalDevice physical_device;
     Device device;
