@@ -40,7 +40,7 @@ int main() {
         return -2;
     }
 
-    if (!initVulkan(window, "Vulkan Demo")) {
+    if (!vulkan_init(window, "Vulkan Demo")) {
         LOG_ERROR("Failed to initialize Vulkan! Exiting...");
         exit(-1);
     }
@@ -50,7 +50,7 @@ int main() {
         running = processEvents();
     }
 
-    shutdownVulkan();
+    vulkan_shutdown();
     SDL_DestroyWindow(window);
     SDL_Vulkan_UnloadLibrary();
     SDL_Quit();

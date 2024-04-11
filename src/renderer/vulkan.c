@@ -25,7 +25,7 @@ bool create_graphics_pipeline() {
     return true;
 }
 
-bool initVulkan(SDL_Window *window, const char *app_name) {
+bool vulkan_init(SDL_Window *window, const char *app_name) {
     if (!vulkan_instance_create(window, app_name, &context.instance)) {
         LOG_ERROR("Unable to create Vulkan instance!");
         return false;
@@ -59,7 +59,7 @@ bool initVulkan(SDL_Window *window, const char *app_name) {
     return true;
 }
 
-void shutdownVulkan() {
+void vulkan_shutdown() {
     physical_device_destroy(&context.physical_device);
     swapchain_destroy(&context.device, &context.swapchain);
     device_destroy(&context.device);

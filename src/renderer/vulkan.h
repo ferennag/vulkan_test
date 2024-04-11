@@ -18,9 +18,8 @@ typedef struct VulkanContext {
     PhysicalDevice physical_device;
     Device device;
     Swapchain swapchain;
-    VkExtent2D extent;
 } VulkanContext;
 
-bool initVulkan(SDL_Window *window, const char *app_name);
+bool vulkan_init(SDL_Window *window, const char *app_name);
 
-void shutdownVulkan();
+void vulkan_shutdown();
