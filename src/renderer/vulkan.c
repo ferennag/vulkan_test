@@ -182,7 +182,7 @@ bool create_graphics_pipeline() {
 }
 
 bool initVulkan(SDL_Window *window, const char *app_name) {
-    if (!instance_create(window, app_name, &context.instance)) {
+    if (!vulkan_instance_create(window, app_name, &context.instance)) {
         LOG_ERROR("Unable to create Vulkan instance!");
         return false;
     }
@@ -228,8 +228,8 @@ void shutdownVulkan() {
     darray_destroy(context.swapchain_details.image_views);
     darray_destroy(context.swapchain_details.images);
     physical_device_destroy(&context.physical_device);
-    vkDestroySwapchainKHR(context.device.device, context.swapchain_details.swapchain, 0);
+    vkDestroySwapchainKHR(context.device.device, context.swapchain_details.swapchain, NULL);
     device_destroy(&context.device);
-    vkDestroySurfaceKHR(context.instance.vk_instance, context.surface, 0);
-    instance_destroy(&context.instance);
+    vkDestroySurfaceKHR(context.instance.vk_instance, context.surface, NULL);
+    vulkan_instance_destroy(&context.instance);
 }

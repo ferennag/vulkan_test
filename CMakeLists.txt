@@ -24,8 +24,8 @@ add_executable(vulkan_test main.c
         src/renderer/vulkan_types.h
         src/renderer/device.c
         src/renderer/device.h
-        src/renderer/instance.c
-        src/renderer/instance.h)
+        src/renderer/vulkan_instance.c
+        src/renderer/vulkan_instance.h)
 target_compile_options(vulkan_test PRIVATE -g -Wall)
 target_include_directories(vulkan_test PUBLIC src)
 target_link_libraries(vulkan_test Vulkan::Vulkan SDL2::SDL2 std)

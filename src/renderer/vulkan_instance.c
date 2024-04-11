@@ -1,4 +1,4 @@
-#include "instance.h"
+#include "vulkan_instance.h"
 
 #include <SDL_vulkan.h>
 #include <std/containers/darray.h>
@@ -31,7 +31,7 @@ bool check_validation_layers(const char **requested) {
     return not_found == 0;
 }
 
-bool instance_create(SDL_Window *window, const char *app_name, Instance *out) {
+bool vulkan_instance_create(SDL_Window *window, const char *app_name, VulkanInstance *out) {
     u32 api_version = 0;
     vkEnumerateInstanceVersion(&api_version);
     LOG_INFO("Vulkan version: %d.%d.%d.%d", VK_API_VERSION_VARIANT(api_version), VK_API_VERSION_MAJOR(api_version), VK_API_VERSION_MINOR(api_version), VK_API_VERSION_PATCH(api_version));
@@ -61,7 +61,7 @@ bool instance_create(SDL_Window *window, const char *app_name, Instance *out) {
     instanceCreateInfo.ppEnabledLayerNames = layers;
     instanceCreateInfo.flags = VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
 
-    Instance instance = {0};
+    VulkanInstance instance = {0};
     VK_CHECK(vkCreateInstance(&instanceCreateInfo, 0, &instance.vk_instance));
     *out = instance;
 
@@ -70,7 +70,7 @@ bool instance_create(SDL_Window *window, const char *app_name, Instance *out) {
     return true;
 }
 
-void instance_destroy(Instance *instance) {
+void vulkan_instance_destroy(VulkanInstance *instance) {
     vkDestroyInstance(instance->vk_instance, NULL);
     instance->vk_instance = NULL;
 }
