@@ -43,7 +43,7 @@ VkExtent2D swapchain_choose_swap_extent(SDL_Window *window) {
     return extent;
 }
 
-void create_image_views(Device *device, Swapchain *swapchain) {
+void swapchain_create_image_views(Device *device, Swapchain *swapchain) {
     VkImageView *image_views = darray_reserve(VkImageView, darray_length(swapchain->images));
 
     for (int i = 0; i < darray_length(swapchain->images); ++i) {
@@ -67,13 +67,7 @@ void create_image_views(Device *device, Swapchain *swapchain) {
     swapchain->image_views = image_views;
 }
 
-bool swapchain_init(SDL_Window *window, PhysicalDevice *physicalDevice, Device *device, VkSurfaceKHR *surface,
-                    Swapchain *out) {
-    if (!query_swapchain_details(physicalDevice, surface, out)) {
-        LOG_ERROR("Couldn't query swapchain details!");
-        return false;
-    }
-
+bool swapchain_select_format(Swapchain *out) {
     // Select format
     out->selected_format = UINT32_MAX;
     for (int i = 0; i < darray_length(out->formats); ++i) {
@@ -86,12 +80,11 @@ bool swapchain_init(SDL_Window *window, PhysicalDevice *physicalDevice, Device *
             break;
         }
     }
-    if (out->selected_format == UINT32_MAX) {
-        LOG_ERROR("Couldn't find a suitable swapchain format!");
-        return false;
-    }
 
-    // Select mode
+    return out->selected_format != UINT32_MAX;
+}
+
+bool swapchain_select_present_mode(Swapchain *out) {
     out->selected_mode = UINT32_MAX;
     for (int i = 0; i < darray_length(out->present_modes); ++i) {
         VkPresentModeKHR mode = out->present_modes[i];
@@ -102,7 +95,22 @@ bool swapchain_init(SDL_Window *window, PhysicalDevice *physicalDevice, Device *
             break;
         }
     }
-    if (out->selected_mode == UINT32_MAX) {
+    return out->selected_mode != UINT32_MAX;
+}
+
+bool swapchain_init(SDL_Window *window, PhysicalDevice *physicalDevice, Device *device, VkSurfaceKHR *surface,
+                    Swapchain *out) {
+    if (!query_swapchain_details(physicalDevice, surface, out)) {
+        LOG_ERROR("Couldn't query swapchain details!");
+        return false;
+    }
+
+    if (!swapchain_select_format(out)) {
+        LOG_ERROR("Couldn't find a suitable swapchain format!");
+        return false;
+    }
+
+    if (!swapchain_select_present_mode(out)) {
         LOG_ERROR("Couldn't find a suitable swapchain presentation mode!");
         return false;
     }
@@ -152,7 +160,7 @@ bool swapchain_init(SDL_Window *window, PhysicalDevice *physicalDevice, Device *
     out->images = images;
     out->extent = extent;
 
-    create_image_views(device, out);
+    swapchain_create_image_views(device, out);
 
     return true;
 }
