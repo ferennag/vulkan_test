@@ -7,14 +7,7 @@
 #include "defines.h"
 #include "vulkan_types.h"
 #include "physical_device.h"
-
-typedef struct VulkanQueues {
-    u32 graphicsIndex;
-    VkQueue graphicsQueue;
-
-    u32 presentIndex;
-    VkQueue presentQueue;
-} VulkanQueues;
+#include "device.h"
 
 typedef struct SwapchainDetails {
     VkSwapchainKHR swapchain;
@@ -33,10 +26,9 @@ typedef struct VulkanContext {
     VkInstance instance;
     VkSurfaceKHR surface;
     PhysicalDevice physical_device;
-    VkDevice device;
+    Device device;
     SwapchainDetails swapchain_details;
     VkExtent2D extent;
-    VulkanQueues queues;
 } VulkanContext;
 
 bool initVulkan(SDL_Window *window, const char *app_name);

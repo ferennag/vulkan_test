@@ -131,8 +131,11 @@ bool init_swapchain(SDL_Window *window) {
     create_info.imageArrayLayers = 1;
     create_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-    u32 queue_family_indices[] = {context.queues.graphicsIndex, context.queues.presentIndex};
-    if (context.queues.graphicsIndex != context.queues.presentIndex) {
+    u32 graphics_index = context.device.queues[QUEUE_FEATURE_GRAPHICS].queue_family->index;
+    u32 present_index = context.device.queues[QUEUE_FEATURE_PRESENT].queue_family->index;
+    u32 queue_family_indices[] = {graphics_index, present_index};
+
+    if (graphics_index != present_index) {
         create_info.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
         create_info.queueFamilyIndexCount = 2;
         create_info.pQueueFamilyIndices = queue_family_indices;
@@ -148,12 +151,12 @@ bool init_swapchain(SDL_Window *window) {
     create_info.clipped = VK_TRUE;
     create_info.oldSwapchain = VK_NULL_HANDLE;
 
-    VK_CHECK(vkCreateSwapchainKHR(context.device, &create_info, NULL, &context.swapchain_details.swapchain));
+    VK_CHECK(vkCreateSwapchainKHR(context.device.device, &create_info, NULL, &context.swapchain_details.swapchain));
 
     u32 image_count = 0;
-    VK_CHECK(vkGetSwapchainImagesKHR(context.device, context.swapchain_details.swapchain, &image_count, NULL));
+    VK_CHECK(vkGetSwapchainImagesKHR(context.device.device, context.swapchain_details.swapchain, &image_count, NULL));
     VkImage *images = darray_reserve(VkImage, image_count);
-    VK_CHECK(vkGetSwapchainImagesKHR(context.device, context.swapchain_details.swapchain, &image_count, images));
+    VK_CHECK(vkGetSwapchainImagesKHR(context.device.device, context.swapchain_details.swapchain, &image_count, images));
     context.swapchain_details.images = images;
     context.extent = extent;
 
@@ -178,7 +181,7 @@ bool create_image_views() {
         create_info.subresourceRange.baseArrayLayer = 0;
         create_info.subresourceRange.layerCount = 1;
 
-        VK_CHECK(vkCreateImageView(context.device, &create_info, NULL, &image_views[i]));
+        VK_CHECK(vkCreateImageView(context.device.device, &create_info, NULL, &image_views[i]));
     }
 
     context.swapchain_details.image_views = image_views;
@@ -186,91 +189,19 @@ bool create_image_views() {
     return true;
 }
 
-b8 createDevice(VulkanContext *context) {
-    VulkanQueues queues = {
-            .graphicsIndex = UINT32_MAX,
-            .presentIndex = UINT32_MAX,
-            .graphicsQueue = 0,
-            .presentQueue = 0,
-    };
+b8 create_device(VulkanContext *context) {
+    device_create(&context->physical_device, &context->surface, &context->device);
 
-    u32 queueFamilyCount = 0;
-    vkGetPhysicalDeviceQueueFamilyProperties(context->physical_device.device, &queueFamilyCount, 0);
-    VkQueueFamilyProperties *queueFamilies = darray_reserve(VkQueueFamilyProperties, queueFamilyCount);
-    vkGetPhysicalDeviceQueueFamilyProperties(context->physical_device.device, &queueFamilyCount, queueFamilies);
-
-    u32 *queue_indexes = darray_create(u32);
-    for (u32 i = 0; i < queueFamilyCount; ++i) {
-        LOG_TRACE("Checking queue family index: %d", i);
-        if (queues.graphicsIndex == UINT32_MAX && queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
-            LOG_TRACE("Found Graphics queue: %d", i);
-            queues.graphicsIndex = i;
-            darray_push(queue_indexes, i);
-        }
-
-        if (queues.presentIndex == UINT32_MAX) {
-            VkBool32 supported;
-            VK_CHECK(vkGetPhysicalDeviceSurfaceSupportKHR(context->physical_device.device, i, context->surface, &supported))
-            if (supported) {
-                LOG_TRACE("Found Present queue: %d", i);
-                queues.presentIndex = i;
-                if (queues.graphicsIndex != queues.presentIndex) {
-                    darray_push(queue_indexes, i);
-                }
-            }
-        }
-
-        if (queues.graphicsIndex != UINT32_MAX && queues.presentIndex != UINT32_MAX) {
-            break;
-        }
-    }
-    context->queues = queues;
-
-    if (context->queues.graphicsIndex == UINT32_MAX || context->queues.presentIndex == UINT32_MAX) {
+    if (!device_queue_available(&context->device, QUEUE_FEATURE_GRAPHICS)) {
+        LOG_ERROR("Graphics queue not available!");
         return FALSE;
     }
 
-    VkDeviceQueueCreateInfo *queue_create_infos = darray_create(VkDeviceQueueCreateInfo);
-    float priority = 1.0f;
-    for (int i = 0; i < darray_length(queue_indexes); ++i) {
-        VkDeviceQueueCreateInfo queueCreateInfo = {VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO};
-        queueCreateInfo.pQueuePriorities = &priority;
-        queueCreateInfo.queueCount = 1;
-        queueCreateInfo.queueFamilyIndex = queue_indexes[i];
-        darray_push(queue_create_infos, queueCreateInfo);
-    }
-
-    const char **extensions = darray_create(const char *);
-    if (!physical_device_is_extension_available(&context->physical_device, VK_KHR_SWAPCHAIN_EXTENSION_NAME)) {
-        LOG_ERROR("Vulkan Swapchain extension unavailable: %s", VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+    if (!device_queue_available(&context->device, QUEUE_FEATURE_PRESENT)){
+        LOG_ERROR("Present queue not available!");
         return FALSE;
     }
-    darray_push(extensions, &VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 
-    if (physical_device_is_extension_available(&context->physical_device, "VK_KHR_portability_subset")) {
-        darray_push(extensions, &"VK_KHR_portability_subset");
-    }
-
-    VkPhysicalDeviceFeatures features = {};
-
-    VkDeviceCreateInfo createInfo = {VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO};
-    createInfo.queueCreateInfoCount = darray_length(queue_create_infos);
-    createInfo.pQueueCreateInfos = queue_create_infos;
-    createInfo.ppEnabledExtensionNames = extensions;
-    createInfo.enabledExtensionCount = darray_length(extensions);
-    createInfo.pEnabledFeatures = &features;
-
-    VK_CHECK(vkCreateDevice(context->physical_device.device, &createInfo, 0, &context->device))
-
-    vkGetDeviceQueue(context->device, context->queues.graphicsIndex, 0, &context->queues.graphicsQueue);
-    vkGetDeviceQueue(context->device, context->queues.presentIndex, 0, &context->queues.presentQueue);
-
-    darray_destroy(queueFamilies);
-    darray_destroy(queue_indexes);
-    darray_destroy(queue_create_infos);
-    darray_destroy(extensions);
-
-    LOG_INFO("Successfully initialized Vulkan device.");
     return TRUE;
 }
 
@@ -332,7 +263,7 @@ bool initVulkan(SDL_Window *window, const char *app_name) {
         return false;
     }
 
-    if (!createDevice(&context)) {
+    if (!create_device(&context)) {
         LOG_ERROR("Couldn't create a logical device!");
         return false;
     }
@@ -357,14 +288,14 @@ bool initVulkan(SDL_Window *window, const char *app_name) {
 
 void shutdownVulkan() {
     for (int i = 0; i < darray_length(context.swapchain_details.image_views); ++i) {
-        vkDestroyImageView(context.device, context.swapchain_details.image_views[i], NULL);
+        vkDestroyImageView(context.device.device, context.swapchain_details.image_views[i], NULL);
     }
 
     darray_destroy(context.swapchain_details.image_views);
     darray_destroy(context.swapchain_details.images);
     physical_device_destroy(&context.physical_device);
-    vkDestroySwapchainKHR(context.device, context.swapchain_details.swapchain, 0);
+    vkDestroySwapchainKHR(context.device.device, context.swapchain_details.swapchain, 0);
+    device_destroy(&context.device);
     vkDestroySurfaceKHR(context.instance, context.surface, 0);
-    vkDestroyDevice(context.device, 0);
     vkDestroyInstance(context.instance, 0);
 }
