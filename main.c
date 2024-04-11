@@ -45,8 +45,6 @@ int main() {
         exit(-1);
     }
 
-    initSwapChain();
-
     bool running = true;
     while (running) {
         running = processEvents();

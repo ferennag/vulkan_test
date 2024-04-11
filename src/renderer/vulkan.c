@@ -1,33 +1,9 @@
 #include "renderer/vulkan.h"
 #include <SDL_vulkan.h>
 #include "std/containers/darray.h"
+#include <vulkan/vk_enum_string_helper.h>
 
 static VulkanContext context = {0};
-
-void query_available_device_extensions() {
-    u32 count = 0;
-    VK_CHECK(vkEnumerateDeviceExtensionProperties(context.physicalDevice, NULL, &count, NULL));
-    VkExtensionProperties *properties = darray_reserve(VkExtensionProperties, count);
-    VK_CHECK(vkEnumerateDeviceExtensionProperties(context.physicalDevice, NULL, &count, properties));
-
-    const char **names = darray_reserve(const char *, count);
-    for (int i = 0; i < count; ++i) {
-        LOG_INFO("Found supported device extension: %s", properties[i].extensionName);
-        names[i] = properties[i].extensionName;
-    }
-
-    darray_destroy(properties);
-    context.available_device_extensions = names;
-}
-
-bool is_device_extension_available(const char *name) {
-    for (int i = 0; i < darray_length(context.available_device_extensions); ++i) {
-        if (strcmp(name, context.available_device_extensions[i]) == 0) {
-            return true;
-        }
-    }
-    return false;
-}
 
 bool check_validation_layers(const char **requested) {
     u32 layer_count;
@@ -60,19 +36,19 @@ bool check_validation_layers(const char **requested) {
 bool query_swapchain_details() {
     SwapchainDetails details = {};
 
-    VK_CHECK(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(context.physicalDevice, context.surface,
+    VK_CHECK(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(context.physical_device.device, context.surface,
                                                        &details.surface_capabilities));
 
     u32 format_count;
-    VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(context.physicalDevice, context.surface, &format_count, NULL));
+    VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(context.physical_device.device, context.surface, &format_count, NULL));
     details.formats = darray_reserve(VkSurfaceFormatKHR, format_count);
-    VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(context.physicalDevice, context.surface, &format_count,
+    VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(context.physical_device.device, context.surface, &format_count,
                                                   details.formats));
 
     u32 mode_count;
-    VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(context.physicalDevice, context.surface, &mode_count, NULL));
+    VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(context.physical_device.device, context.surface, &mode_count, NULL));
     details.present_modes = darray_reserve(VkPresentModeKHR, mode_count);
-    VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(context.physicalDevice, context.surface, &mode_count,
+    VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(context.physical_device.device, context.surface, &mode_count,
                                                        details.present_modes));
 
     if (darray_length(details.formats) == 0) {
@@ -113,7 +89,8 @@ bool init_swapchain(SDL_Window *window) {
 
         if (format.format == VK_FORMAT_B8G8R8A8_SRGB && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
             context.swapchain_details.selected_format = i;
-            LOG_INFO("Selecting swapchain surface format: %s - %s", string_VkFormat(format.format), string_VkColorSpaceKHR(format.colorSpace));
+            LOG_INFO("Selecting swapchain surface format: %s - %s", string_VkFormat(format.format),
+                     string_VkColorSpaceKHR(format.colorSpace));
             break;
         }
     }
@@ -209,37 +186,6 @@ bool create_image_views() {
     return true;
 }
 
-b8 pickPhysicalDevice(VulkanContext *context) {
-    u32 deviceCount = 0;
-    VK_CHECK(vkEnumeratePhysicalDevices(context->instance, &deviceCount, 0))
-    VkPhysicalDevice *devices = darray_reserve(VkPhysicalDevice, deviceCount);
-    VK_CHECK(vkEnumeratePhysicalDevices(context->instance, &deviceCount, devices))
-
-    VkPhysicalDevice *discrete_gpu = 0;
-    VkPhysicalDevice *integrated_gpu = 0;
-    for (u32 i = 0; i < deviceCount; ++i) {
-        VkPhysicalDeviceProperties properties;
-        vkGetPhysicalDeviceProperties(devices[i], &properties);
-
-        if (properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
-            LOG_INFO("Found Discreet GPU: %d - %s", properties.vendorID, properties.deviceName);
-            discrete_gpu = &devices[i];
-        } else if (properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU) {
-            LOG_INFO("Found Integrated GPU: %d - %s", properties.vendorID, properties.deviceName);
-            integrated_gpu = &devices[i];
-        }
-    }
-
-    if (discrete_gpu) {
-        context->physicalDevice = *discrete_gpu;
-    } else if (integrated_gpu) {
-        context->physicalDevice = *integrated_gpu;
-    }
-
-    darray_destroy(devices)
-    return context->physicalDevice != 0;
-}
-
 b8 createDevice(VulkanContext *context) {
     VulkanQueues queues = {
             .graphicsIndex = UINT32_MAX,
@@ -249,24 +195,24 @@ b8 createDevice(VulkanContext *context) {
     };
 
     u32 queueFamilyCount = 0;
-    vkGetPhysicalDeviceQueueFamilyProperties(context->physicalDevice, &queueFamilyCount, 0);
+    vkGetPhysicalDeviceQueueFamilyProperties(context->physical_device.device, &queueFamilyCount, 0);
     VkQueueFamilyProperties *queueFamilies = darray_reserve(VkQueueFamilyProperties, queueFamilyCount);
-    vkGetPhysicalDeviceQueueFamilyProperties(context->physicalDevice, &queueFamilyCount, queueFamilies);
+    vkGetPhysicalDeviceQueueFamilyProperties(context->physical_device.device, &queueFamilyCount, queueFamilies);
 
     u32 *queue_indexes = darray_create(u32);
     for (u32 i = 0; i < queueFamilyCount; ++i) {
-        LOG_TRACE("Checking queue family index: %d", i)
+        LOG_TRACE("Checking queue family index: %d", i);
         if (queues.graphicsIndex == UINT32_MAX && queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
-            LOG_TRACE("Found Graphics queue: %d", i)
+            LOG_TRACE("Found Graphics queue: %d", i);
             queues.graphicsIndex = i;
             darray_push(queue_indexes, i);
         }
 
         if (queues.presentIndex == UINT32_MAX) {
             VkBool32 supported;
-            VK_CHECK(vkGetPhysicalDeviceSurfaceSupportKHR(context->physicalDevice, i, context->surface, &supported))
+            VK_CHECK(vkGetPhysicalDeviceSurfaceSupportKHR(context->physical_device.device, i, context->surface, &supported))
             if (supported) {
-                LOG_TRACE("Found Present queue: %d", i)
+                LOG_TRACE("Found Present queue: %d", i);
                 queues.presentIndex = i;
                 if (queues.graphicsIndex != queues.presentIndex) {
                     darray_push(queue_indexes, i);
@@ -294,15 +240,14 @@ b8 createDevice(VulkanContext *context) {
         darray_push(queue_create_infos, queueCreateInfo);
     }
 
-    query_available_device_extensions();
     const char **extensions = darray_create(const char *);
-    if (!is_device_extension_available(VK_KHR_SWAPCHAIN_EXTENSION_NAME)) {
+    if (!physical_device_is_extension_available(&context->physical_device, VK_KHR_SWAPCHAIN_EXTENSION_NAME)) {
         LOG_ERROR("Vulkan Swapchain extension unavailable: %s", VK_KHR_SWAPCHAIN_EXTENSION_NAME);
         return FALSE;
     }
     darray_push(extensions, &VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 
-    if (is_device_extension_available("VK_KHR_portability_subset")) {
+    if (physical_device_is_extension_available(&context->physical_device, "VK_KHR_portability_subset")) {
         darray_push(extensions, &"VK_KHR_portability_subset");
     }
 
@@ -315,7 +260,7 @@ b8 createDevice(VulkanContext *context) {
     createInfo.enabledExtensionCount = darray_length(extensions);
     createInfo.pEnabledFeatures = &features;
 
-    VK_CHECK(vkCreateDevice(context->physicalDevice, &createInfo, 0, &context->device))
+    VK_CHECK(vkCreateDevice(context->physical_device.device, &createInfo, 0, &context->device))
 
     vkGetDeviceQueue(context->device, context->queues.graphicsIndex, 0, &context->queues.graphicsQueue);
     vkGetDeviceQueue(context->device, context->queues.presentIndex, 0, &context->queues.presentQueue);
@@ -329,7 +274,11 @@ b8 createDevice(VulkanContext *context) {
     return TRUE;
 }
 
-bool initVulkan(SDL_Window *window, const char *app_name) {
+bool create_instance(SDL_Window *window, const char *app_name) {
+    u32 api_version = 0;
+    vkEnumerateInstanceVersion(&api_version);
+    LOG_INFO("Vulkan version: %d.%d.%d.%d", VK_API_VERSION_VARIANT(api_version), VK_API_VERSION_MAJOR(api_version), VK_API_VERSION_MINOR(api_version), VK_API_VERSION_PATCH(api_version));
+
     VkApplicationInfo appInfo = {VK_STRUCTURE_TYPE_APPLICATION_INFO};
     appInfo.pApplicationName = app_name;
     appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
@@ -356,15 +305,29 @@ bool initVulkan(SDL_Window *window, const char *app_name) {
     instanceCreateInfo.flags = VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
 
     VK_CHECK(vkCreateInstance(&instanceCreateInfo, 0, &context.instance));
+
+    darray_destroy(extensions);
+    darray_destroy(layers);
+    return true;
+}
+
+bool create_graphics_pipeline() {
+
+    return true;
+}
+
+bool initVulkan(SDL_Window *window, const char *app_name) {
+    if (!create_instance(window, app_name)) {
+        LOG_ERROR("Unable to create Vulkan instance!");
+        return false;
+    }
+
     if (!SDL_Vulkan_CreateSurface(window, context.instance, &context.surface)) {
         LOG_ERROR("Unable to create Vulkan surface with SDL: %s", SDL_GetError());
         return false;
     }
 
-    darray_destroy(extensions);
-    darray_destroy(layers);
-
-    if (!pickPhysicalDevice(&context)) {
+    if (!physical_device_select_best(context.instance, &context.physical_device)) {
         LOG_ERROR("Couldn't find a suitable GPU!");
         return false;
     }
@@ -384,11 +347,12 @@ bool initVulkan(SDL_Window *window, const char *app_name) {
         return false;
     }
 
+    if (!create_graphics_pipeline()) {
+        LOG_ERROR("Couldn't create graphics pipeline!");
+        return false;
+    }
+
     return true;
-}
-
-void initSwapChain() {
-
 }
 
 void shutdownVulkan() {
@@ -397,8 +361,8 @@ void shutdownVulkan() {
     }
 
     darray_destroy(context.swapchain_details.image_views);
-    darray_destroy(context.available_device_extensions);
     darray_destroy(context.swapchain_details.images);
+    physical_device_destroy(&context.physical_device);
     vkDestroySwapchainKHR(context.device, context.swapchain_details.swapchain, 0);
     vkDestroySurfaceKHR(context.instance, context.surface, 0);
     vkDestroyDevice(context.device, 0);
