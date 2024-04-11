@@ -26,7 +26,7 @@ typedef struct Queue {
 } Queue;
 
 typedef struct Device {
-    VkDevice device;
+    VkDevice vk_device;
     QueueFamily *queue_families;
     Queue queues[QUEUE_FEATURE_MAX];
 } Device;

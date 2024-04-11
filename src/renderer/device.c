@@ -114,12 +114,12 @@ bool device_create(PhysicalDevice *physical_device, VkSurfaceKHR *surface, Devic
 
     VkDevice device;
     VK_CHECK(vkCreateDevice(physical_device->device, &createInfo, 0, &device))
-    result.device = device;
+    result.vk_device = device;
 
     for (int i = 0; i < QUEUE_FEATURE_MAX; ++i) {
         if (result.queues[i].queue_family != NULL) {
             VkQueue vk_queue;
-            vkGetDeviceQueue(result.device, result.queues[i].queue_family->index, 0, &vk_queue);
+            vkGetDeviceQueue(result.vk_device, result.queues[i].queue_family->index, 0, &vk_queue);
             result.queues[i].vk_queue = vk_queue;
         }
     }
@@ -140,6 +140,6 @@ void device_destroy(Device *device) {
     darray_destroy(device->queue_families);
     device->queue_families = 0;
 
-    vkDestroyDevice(device->device, NULL);
-    device->device = 0;
+    vkDestroyDevice(device->vk_device, NULL);
+    device->vk_device = 0;
 }

@@ -61,7 +61,7 @@ void create_image_views(Device *device, Swapchain *swapchain) {
         create_info.subresourceRange.baseArrayLayer = 0;
         create_info.subresourceRange.layerCount = 1;
 
-        VK_CHECK(vkCreateImageView(device->device, &create_info, NULL, &image_views[i]));
+        VK_CHECK(vkCreateImageView(device->vk_device, &create_info, NULL, &image_views[i]));
     }
 
     swapchain->image_views = image_views;
@@ -143,12 +143,12 @@ bool swapchain_init(SDL_Window *window, PhysicalDevice *physicalDevice, Device *
     create_info.clipped = VK_TRUE;
     create_info.oldSwapchain = VK_NULL_HANDLE;
 
-    VK_CHECK(vkCreateSwapchainKHR(device->device, &create_info, NULL, &out->vk_swapchain));
+    VK_CHECK(vkCreateSwapchainKHR(device->vk_device, &create_info, NULL, &out->vk_swapchain));
 
     u32 image_count = 0;
-    VK_CHECK(vkGetSwapchainImagesKHR(device->device, out->vk_swapchain, &image_count, NULL));
+    VK_CHECK(vkGetSwapchainImagesKHR(device->vk_device, out->vk_swapchain, &image_count, NULL));
     VkImage *images = darray_reserve(VkImage, image_count);
-    VK_CHECK(vkGetSwapchainImagesKHR(device->device, out->vk_swapchain, &image_count, images));
+    VK_CHECK(vkGetSwapchainImagesKHR(device->vk_device, out->vk_swapchain, &image_count, images));
     out->images = images;
     out->extent = extent;
 
@@ -159,7 +159,7 @@ bool swapchain_init(SDL_Window *window, PhysicalDevice *physicalDevice, Device *
 
 void swapchain_destroy(Device *device, Swapchain *swapchain) {
     for (int i = 0; i < darray_length(swapchain->image_views); ++i) {
-        vkDestroyImageView(device->device, swapchain->image_views[i], NULL);
+        vkDestroyImageView(device->vk_device, swapchain->image_views[i], NULL);
     }
 
     darray_destroy(swapchain->image_views);
@@ -167,6 +167,6 @@ void swapchain_destroy(Device *device, Swapchain *swapchain) {
     darray_destroy(swapchain->images);
     swapchain->images = NULL;
 
-    vkDestroySwapchainKHR(device->device, swapchain->vk_swapchain, NULL);
+    vkDestroySwapchainKHR(device->vk_device, swapchain->vk_swapchain, NULL);
     swapchain->vk_swapchain = NULL;
 }
