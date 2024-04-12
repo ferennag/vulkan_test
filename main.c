@@ -4,10 +4,7 @@
 #include <SDL_vulkan.h>
 #include <std/core/memory.h>
 #include "core/input.h"
-#include <std/core/file.h>
 #include "renderer/vulkan.h"
-#include "renderer/shader.h"
-#include "renderer/command_buffer.h"
 
 bool processEvents() {
     SDL_Event event;
@@ -21,8 +18,6 @@ bool processEvents() {
                 return !handle_keyboard_event(&event.key, false);
         }
     }
-
-    render();
 
     return true;
 }
@@ -54,6 +49,7 @@ int main() {
     bool running = true;
     while (running) {
         running = processEvents();
+        render();
     }
 
     vulkan_shutdown();

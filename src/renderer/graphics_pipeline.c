@@ -192,13 +192,13 @@ void render_pass_begin(VulkanContext *context, u32 image_index) {
     begin_info.clearValueCount = 1;
     begin_info.pClearValues = &clear_color;
 
-    vkCmdBeginRenderPass(context->command_buffer, &begin_info, VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdBeginRenderPass(context->current_renderer->command_buffer, &begin_info, VK_SUBPASS_CONTENTS_INLINE);
 }
 
 void render_pass_end(VulkanContext *context) {
-    vkCmdEndRenderPass(context->command_buffer);
+    vkCmdEndRenderPass(context->current_renderer->command_buffer);
 }
 
 void bind_pipeline(VulkanContext *context) {
-    vkCmdBindPipeline(context->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, context->graphics_pipeline.vk_pipeline);
+    vkCmdBindPipeline(context->current_renderer->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, context->graphics_pipeline.vk_pipeline);
 }

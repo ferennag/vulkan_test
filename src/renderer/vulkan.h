@@ -11,6 +11,7 @@
 #include "vulkan_instance.h"
 #include "swapchain.h"
 #include "graphics_pipeline.h"
+#include "renderer_instance.h"
 
 typedef struct VulkanContext {
     VulkanInstance instance;
@@ -22,11 +23,10 @@ typedef struct VulkanContext {
     VkFramebuffer *framebuffers;
 
     VkCommandPool command_pool;
-    VkCommandBuffer command_buffer;
 
-    VkSemaphore image_available_semaphore;
-    VkSemaphore render_finished_semaphore;
-    VkFence in_flight_fence;
+    RendererInstance *renderer_instances;
+    RendererInstance *current_renderer;
+    u32 current_renderer_index;
 } VulkanContext;
 
 bool vulkan_init(SDL_Window *window, const char *app_name);

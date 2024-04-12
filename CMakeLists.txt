@@ -36,7 +36,9 @@ add_executable(vulkan_test main.c
         src/renderer/command_pool.c
         src/renderer/command_pool.h
         src/renderer/command_buffer.c
-        src/renderer/command_buffer.h)
+        src/renderer/command_buffer.h
+        src/renderer/renderer_instance.c
+        src/renderer/renderer_instance.h)
 target_compile_options(vulkan_test PRIVATE -g -Wall)
 target_include_directories(vulkan_test PUBLIC src)
 target_link_libraries(vulkan_test Vulkan::Vulkan SDL2::SDL2 std)
