@@ -20,8 +20,17 @@ typedef struct VulkanContext {
     Swapchain swapchain;
     GraphicsPipeline graphics_pipeline;
     VkFramebuffer *framebuffers;
+
+    VkCommandPool command_pool;
+    VkCommandBuffer command_buffer;
+
+    VkSemaphore image_available_semaphore;
+    VkSemaphore render_finished_semaphore;
+    VkFence in_flight_fence;
 } VulkanContext;
 
 bool vulkan_init(SDL_Window *window, const char *app_name);
 
 void vulkan_shutdown();
+
+void render();

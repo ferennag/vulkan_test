@@ -1,4 +1,5 @@
 #include "graphics_pipeline.h"
+#include "vulkan.h"
 #include <std/containers/darray.h>
 
 void render_pass_create(Device *device, Swapchain *swapchain, VkRenderPass *render_pass) {
@@ -21,12 +22,21 @@ void render_pass_create(Device *device, Swapchain *swapchain, VkRenderPass *rend
     subpass.colorAttachmentCount = 1;
     subpass.pColorAttachments = &color_attachment_ref;
 
+    VkSubpassDependency dependency = {0};
+    dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+    dependency.dstSubpass = 0;
+    dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dependency.srcAccessMask = 0;
+    dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
     VkRenderPassCreateInfo render_pass_create_info = {VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO};
     render_pass_create_info.attachmentCount = 1;
     render_pass_create_info.pAttachments = &color_attachment;
     render_pass_create_info.subpassCount = 1;
     render_pass_create_info.pSubpasses = &subpass;
+    render_pass_create_info.dependencyCount = 1;
+    render_pass_create_info.pDependencies = &dependency;
 
     VK_CHECK(vkCreateRenderPass(device->vk_device, &render_pass_create_info, NULL, render_pass));
 }
@@ -168,4 +178,27 @@ void graphics_pipeline_destroy(Device *device, GraphicsPipeline *pipeline) {
 
     vkDestroyPipelineLayout(device->vk_device, pipeline->layout, NULL);
     pipeline->layout = NULL;
+}
+
+void render_pass_begin(VulkanContext *context, u32 image_index) {
+    VkRenderPassBeginInfo begin_info = {VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
+    begin_info.renderPass = context->graphics_pipeline.render_pass;
+    begin_info.framebuffer = context->framebuffers[image_index];
+    begin_info.renderArea.offset.x = 0;
+    begin_info.renderArea.offset.y = 0;
+    begin_info.renderArea.extent = context->swapchain.extent;
+
+    VkClearValue clear_color = {.color = {0.0, 0.0, 0.0, 1.0}};
+    begin_info.clearValueCount = 1;
+    begin_info.pClearValues = &clear_color;
+
+    vkCmdBeginRenderPass(context->command_buffer, &begin_info, VK_SUBPASS_CONTENTS_INLINE);
+}
+
+void render_pass_end(VulkanContext *context) {
+    vkCmdEndRenderPass(context->command_buffer);
+}
+
+void bind_pipeline(VulkanContext *context) {
+    vkCmdBindPipeline(context->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, context->graphics_pipeline.vk_pipeline);
 }
