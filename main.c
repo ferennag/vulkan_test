@@ -14,21 +14,26 @@ void handle_window_event(SDL_Window *window, SDL_WindowEvent event) {
 
 bool processEvents(SDL_Window *window) {
     SDL_Event event;
+    
+    bool running = true;
     while (SDL_PollEvent(&event)) {
         switch (event.type) {
             case SDL_QUIT:
-                return false;
+                running = false;
+                break;
             case SDL_KEYDOWN:
-                return !handle_keyboard_event(&event.key, true);
+                running = !handle_keyboard_event(&event.key, true);
+                break;
             case SDL_KEYUP:
-                return !handle_keyboard_event(&event.key, false);
+                running = !handle_keyboard_event(&event.key, false);
+                break;
             case SDL_WINDOWEVENT:
                 handle_window_event(window, event.window);
                 break;
         }
     }
 
-    return true;
+    return running;
 }
 
 int main() {
