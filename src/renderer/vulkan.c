@@ -1,26 +1,25 @@
 #include "renderer/vulkan.h"
+#include "shader.h"
+#include "std/containers/darray.h"
+#include "framebuffer.h"
 #include <SDL_vulkan.h>
 #include <vulkan/vk_enum_string_helper.h>
 
 static VulkanContext context = {0};
 
-b8 create_device(VulkanContext *context) {
+bool create_device(VulkanContext *context) {
     device_create(&context->physical_device, &context->surface, &context->device);
 
     if (!device_queue_available(&context->device, QUEUE_FEATURE_GRAPHICS)) {
         LOG_ERROR("Graphics queue not available!");
-        return FALSE;
+        return false;
     }
 
     if (!device_queue_available(&context->device, QUEUE_FEATURE_PRESENT)){
         LOG_ERROR("Present queue not available!");
-        return FALSE;
+        return false;
     }
 
-    return TRUE;
-}
-
-bool create_graphics_pipeline() {
     return true;
 }
 
@@ -50,8 +49,13 @@ bool vulkan_init(SDL_Window *window, const char *app_name) {
         return false;
     }
 
-    if (!create_graphics_pipeline()) {
-        LOG_ERROR("Couldn't create graphics pipeline!");
+    if (!graphics_pipeline_create(&context.device, &context.swapchain, &context.graphics_pipeline)) {
+        LOG_ERROR("Couldn't create graphics vk_pipeline!");
+        return false;
+    }
+
+    if (!framebuffer_create(&context)) {
+        LOG_ERROR("Couldn't create graphics vk_pipeline!");
         return false;
     }
 
@@ -59,6 +63,8 @@ bool vulkan_init(SDL_Window *window, const char *app_name) {
 }
 
 void vulkan_shutdown() {
+    framebuffer_destroy(&context);
+    graphics_pipeline_destroy(&context.device, &context.graphics_pipeline);
     physical_device_destroy(&context.physical_device);
     swapchain_destroy(&context.device, &context.swapchain);
     device_destroy(&context.device);

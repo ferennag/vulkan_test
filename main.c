@@ -2,8 +2,11 @@
 #include <stdbool.h>
 #include <SDL.h>
 #include <SDL_vulkan.h>
+#include <std/core/memory.h>
 #include "core/input.h"
+#include <std/core/file.h>
 #include "renderer/vulkan.h"
+#include "renderer/shader.h"
 
 bool processEvents() {
     SDL_Event event;

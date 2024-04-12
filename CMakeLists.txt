@@ -16,7 +16,6 @@ find_package(Vulkan REQUIRED)
 add_executable(vulkan_test main.c
         src/core/input.h
         src/core/input.c
-        src/defines.h
         src/renderer/vulkan.h
         src/renderer/vulkan.c
         src/renderer/physical_device.c
@@ -27,7 +26,13 @@ add_executable(vulkan_test main.c
         src/renderer/vulkan_instance.c
         src/renderer/vulkan_instance.h
         src/renderer/swapchain.c
-        src/renderer/swapchain.h)
+        src/renderer/swapchain.h
+        src/renderer/shader.c
+        src/renderer/shader.h
+        src/renderer/graphics_pipeline.c
+        src/renderer/graphics_pipeline.h
+        src/renderer/framebuffer.c
+        src/renderer/framebuffer.h)
 target_compile_options(vulkan_test PRIVATE -g -Wall)
 target_include_directories(vulkan_test PUBLIC src)
 target_link_libraries(vulkan_test Vulkan::Vulkan SDL2::SDL2 std)
@@ -70,4 +75,5 @@ function(add_shaders TARGET_NAME)
     )
 endfunction()
 
-add_shaders(vulkan_demo_shaders shaders/vertex.glsl shaders/fragment.glsl)
+add_shaders(vulkan_demo_shaders shaders/vertex.vert shaders/fragment.frag)
+

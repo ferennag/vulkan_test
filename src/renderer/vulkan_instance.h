@@ -1,6 +1,6 @@
 #pragma once
 
-#include "defines.h"
+#include <std/defines.h>
 #include "vulkan_types.h"
 #include <SDL.h>
 

@@ -95,7 +95,7 @@ bool device_create(PhysicalDevice *physical_device, VkSurfaceKHR *surface, Devic
     const char **extensions = darray_create(const char *);
     if (!physical_device_is_extension_available(physical_device, VK_KHR_SWAPCHAIN_EXTENSION_NAME)) {
         LOG_ERROR("Vulkan Swapchain extension unavailable: %s", VK_KHR_SWAPCHAIN_EXTENSION_NAME);
-        return FALSE;
+        return false;
     }
     darray_push(extensions, &VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 
@@ -129,7 +129,7 @@ bool device_create(PhysicalDevice *physical_device, VkSurfaceKHR *surface, Devic
 
     *out = result;
     LOG_INFO("Successfully initialized Vulkan device.");
-    return TRUE;
+    return true;
 }
 
 bool device_queue_available(Device *device, QueueFeature feature) {
