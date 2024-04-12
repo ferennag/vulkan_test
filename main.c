@@ -6,7 +6,13 @@
 #include "core/input.h"
 #include "renderer/vulkan.h"
 
-bool processEvents() {
+void handle_window_event(SDL_Window *window, SDL_WindowEvent event) {
+    if (event.event == SDL_WINDOWEVENT_RESIZED) {
+        vulkan_window_resized(window);
+    }
+}
+
+bool processEvents(SDL_Window *window) {
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
         switch (event.type) {
@@ -16,6 +22,9 @@ bool processEvents() {
                 return !handle_keyboard_event(&event.key, true);
             case SDL_KEYUP:
                 return !handle_keyboard_event(&event.key, false);
+            case SDL_WINDOWEVENT:
+                handle_window_event(window, event.window);
+                break;
         }
     }
 
@@ -34,7 +43,7 @@ int main() {
     }
 
     SDL_Window *window = SDL_CreateWindow("Vulkan Demo", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1280, 760,
-                                          SDL_WINDOW_VULKAN | SDL_WINDOW_SHOWN);
+                                          SDL_WINDOW_VULKAN | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
 
     if (window == NULL) {
         printf("ERROR: failed to initialize SDL: %s", SDL_GetError());
@@ -48,8 +57,8 @@ int main() {
 
     bool running = true;
     while (running) {
-        running = processEvents();
-        render();
+        running = processEvents(window);
+        vulkan_render();
     }
 
     vulkan_shutdown();

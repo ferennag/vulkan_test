@@ -25,6 +25,32 @@ bool create_device(VulkanContext *context) {
     return true;
 }
 
+bool recreate_swap_chain(SDL_Window *window) {
+    if (context.swapchain.vk_swapchain != NULL) {
+        framebuffer_destroy(&context);
+        swapchain_destroy(&context.device, &context.swapchain);
+    }
+
+    if (!swapchain_init(window, &context.physical_device, &context.device, &context.surface, &context.swapchain)) {
+        LOG_ERROR("Couldn't create a swapchain!");
+        return false;
+    }
+
+    if (context.graphics_pipeline.vk_pipeline == NULL) {
+        if (!graphics_pipeline_create(&context.device, &context.swapchain, &context.graphics_pipeline)) {
+            LOG_ERROR("Couldn't create graphics vk_pipeline!");
+            return false;
+        }
+    }
+
+    if (!framebuffer_create(&context)) {
+        LOG_ERROR("Couldn't create graphics vk_pipeline!");
+        return false;
+    }
+
+    return true;
+}
+
 bool vulkan_init(SDL_Window *window, const char *app_name) {
     if (!vulkan_instance_create(window, app_name, &context.instance)) {
         LOG_ERROR("Unable to create Vulkan instance!");
@@ -46,23 +72,14 @@ bool vulkan_init(SDL_Window *window, const char *app_name) {
         return false;
     }
 
-    if (!swapchain_init(window, &context.physical_device, &context.device, &context.surface, &context.swapchain)) {
+    if (!recreate_swap_chain(window)) {
         LOG_ERROR("Couldn't create a swapchain!");
         return false;
     }
 
-    if (!graphics_pipeline_create(&context.device, &context.swapchain, &context.graphics_pipeline)) {
-        LOG_ERROR("Couldn't create graphics vk_pipeline!");
-        return false;
-    }
-
-    if (!framebuffer_create(&context)) {
-        LOG_ERROR("Couldn't create graphics vk_pipeline!");
-        return false;
-    }
-
+    const int max_renderers = 3;
     command_pool_create(&context);
-    renderer_instance_create(&context, 2);
+    renderer_instance_create(&context, max_renderers);
 
     return true;
 }
@@ -131,11 +148,12 @@ void end_frame(u32 image_index) {
     VK_CHECK(vkQueuePresentKHR(graphics_queue, &present_info));
 }
 
-void render() {
+void vulkan_render() {
     context.current_renderer = &context.renderer_instances[context.current_renderer_index];
 
     // Wait for the previous frame to finish
-    VK_CHECK(vkWaitForFences(context.device.vk_device, 1, &context.current_renderer->in_flight_fence, VK_TRUE, UINT64_MAX));
+    VK_CHECK(vkWaitForFences(context.device.vk_device, 1, &context.current_renderer->in_flight_fence, VK_TRUE,
+                             UINT64_MAX));
     VK_CHECK(vkResetFences(context.device.vk_device, 1, &context.current_renderer->in_flight_fence));
 
     u32 image_index = 0;
@@ -146,5 +164,11 @@ void render() {
     begin_frame(image_index);
     vkCmdDraw(context.current_renderer->command_buffer, 3, 1, 0, 0);
     end_frame(image_index);
-    context.current_renderer_index = (context.current_renderer_index + 1) % darray_length(context.renderer_instances);
+    context.current_renderer_index =
+            (context.current_renderer_index + 1) % darray_length(context.renderer_instances);
+}
+
+void vulkan_window_resized(SDL_Window *window) {
+    vkDeviceWaitIdle(context.device.vk_device);
+    recreate_swap_chain(window);
 }

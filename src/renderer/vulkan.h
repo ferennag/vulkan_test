@@ -33,4 +33,6 @@ bool vulkan_init(SDL_Window *window, const char *app_name);
 
 void vulkan_shutdown();
 
-void render();
+void vulkan_render();
+
+void vulkan_window_resized(SDL_Window *window);
